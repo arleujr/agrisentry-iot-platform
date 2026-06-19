@@ -1,4 +1,5 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_cors::Cors; // ✅ Import CORS middleware
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::time::Duration;
@@ -10,6 +11,7 @@ mod error;
 mod api;
 mod db;
 
+/// Utility function to convert string status into enum
 fn status_from_str(status: &str) -> Option<models::DataQualityStatus> {
     match status {
         "PENDING" => Some(models::DataQualityStatus::Pending),
@@ -20,10 +22,12 @@ fn status_from_str(status: &str) -> Option<models::DataQualityStatus> {
     }
 }
 
+/// Basic health check endpoint
 async fn health_check() -> impl Responder {
     HttpResponse::Ok().json(serde_json::json!({ "status": "healthy", "engine": "rust-gateway" }))
 }
 
+/// Dashboard metrics aggregation (last 24h)
 async fn get_dashboard_metrics(db_client: web::Data<db::DbClient>) -> impl Responder {
     match sqlx::query!(
         r#"
@@ -52,6 +56,7 @@ async fn get_dashboard_metrics(db_client: web::Data<db::DbClient>) -> impl Respo
     }
 }
 
+/// Retrieve latest system logs
 async fn get_system_logs(db_client: web::Data<db::DbClient>) -> impl Responder {
     match sqlx::query!(
         r#"SELECT component, message, level, created_at FROM "system_events" ORDER BY id DESC LIMIT 25"#
@@ -73,12 +78,17 @@ async fn get_system_logs(db_client: web::Data<db::DbClient>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Initialize logging/tracing
     tracing_subscriber::fmt::init();
     tracing::info!("🚀 Initializing AgriSentry Core Engine...");
 
-    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
-    let ai_api_url = env::var("AI_API_URL").unwrap_or_else(|_| "http://127.0.0.1:8000/v1/analyze".to_string());
+    // Load environment variables
+    let database_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
+    let ai_api_url = env::var("AI_API_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:8000/v1/analyze".to_string());
 
+    // Setup PostgreSQL connection pool
     let pool = PgPoolOptions::new()
         .max_connections(20)
         .connect_with(database_url.parse().unwrap())
@@ -88,7 +98,7 @@ async fn main() -> std::io::Result<()> {
     let db_client = web::Data::new(db::DbClient::new(pool.clone()));
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
 
-    // AI Engine Worker Async Thread Loop
+    // Background worker for AI processing
     let worker_client = db_client.get_ref().clone();
     let http_client = reqwest::Client::new();
     tokio::spawn(async move {
@@ -129,8 +139,19 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
+    // ✅ Pega a porta dinamicamente do Render, ou usa 8080 localmente
+    let port: u16 = env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse()
+        .expect("PORT must be a valid u16 integer");
+
+    // Configure HTTP server
     let server = HttpServer::new(move || {
+        // ✅ CORS configuration (permissive for local development)
+        let cors = Cors::permissive();
+
         App::new()
+            .wrap(cors) // ✅ Inject CORS middleware
             .app_data(db_client.clone())
             .service(api::ingest_telemetry)
             .route("/", web::get().to(health_check))
@@ -138,9 +159,10 @@ async fn main() -> std::io::Result<()> {
             .route("/api/v1/dashboard/metrics", web::get().to(get_dashboard_metrics))
             .route("/api/v1/dashboard/logs", web::get().to(get_system_logs))
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", port))?
     .run();
 
+    // Graceful shutdown handling
     let handle = server.handle();
     tokio::select! {
         _ = server => { tracing::warn!("Web node interrupted"); }

@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-950 text-slate-100 font-sans p-6">
-    <!-- Top Bar Dashboard Context Headers -->
     <header class="mb-8 border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <h1 class="text-2xl font-black tracking-wider text-emerald-400">AGRISENTRY ENTERPRISE</h1>
@@ -17,7 +16,6 @@
       </div>
     </header>
 
-    <!-- Metrics Distribution Row -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div v-for="(metric, idx) in metricsMap" :key="idx" class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
         <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">{{ metric.label }}</span>
@@ -25,9 +23,7 @@
       </div>
     </section>
 
-    <!-- Interactive Execution Grid Layout -->
     <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Left Panel: Injection Testing Ground -->
       <section class="lg:col-span-5 bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between">
         <div>
           <h2 class="text-md font-bold tracking-wide uppercase text-slate-300 mb-4">Simulate Field Telemetry Target</h2>
@@ -58,7 +54,6 @@
         </button>
       </section>
 
-      <!-- Right Panel: Live Scrolling Logs Terminal -->
       <section class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col h-[420px]">
         <div class="border-b border-slate-800 px-4 py-3 flex justify-between items-center bg-slate-900/50 rounded-t-2xl">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Live Infrastructure Logging Terminal</span>
@@ -84,7 +79,7 @@
 export default {
   data() {
     return {
-      apiUrl: 'http://127.0.0.1:8080', // Bind pointing to core Rust gateway node
+      apiUrl: 'https://agrisentry-iot-gateway.onrender.com', // Bind pointing to core Rust gateway node
       scanning: false,
       form: { device_id: 'TRK-9402-SOIL', reading_value: 45.2 },
       metrics: [],
@@ -119,7 +114,7 @@ export default {
         const mRes = await fetch(`${this.apiUrl}/api/v1/dashboard/metrics`);
         if (mRes.ok) {
           const data = await mRes.json();
-          this.metrics = data.metrics;
+          this.metrics = data.metrics || [];
         }
         const lRes = await fetch(`${this.apiUrl}/api/v1/dashboard/logs`);
         if (lRes.ok) {
@@ -127,19 +122,34 @@ export default {
           this.$nextTick(this.scrollToBottom);
         }
       } catch (e) {
-        console.error("Networking stream interrupted:", e);
+        // Silenced specifically to prevent terminal spam if gateway restarts
       }
     },
     async dispatchTelemetry() {
       try {
-        await fetch(`${this.apiUrl}/api/v1/telemetry`, {
+        // Agora o Payload reflete 100% a struct "SensorPayload" do Rust!
+        const payload = {
+          device_id: this.form.device_id,
+          reading_value: parseFloat(this.form.reading_value),
+          timestamp: new Date().toISOString() // Formato UTC exigido pelo Rust (DateTime<Utc>)
+        };
+
+        const response = await fetch(`${this.apiUrl}/api/v1/telemetry`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...this.form, timestamp: new Date().toISOString() })
+          headers: { 
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify(payload)
         });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error Status: ${response.status}`);
+        }
+
+        // Força o frontend a buscar os dados novos assim que insere
         this.pollEngine();
       } catch (e) {
-        console.error(e);
+        console.error("Telemetry pipeline execution crash:", e);
       }
     },
     triggerOtaScan() {
@@ -157,14 +167,17 @@ export default {
       if (term) term.scrollTop = term.scrollHeight;
     },
     formatTime(str) {
+      if (!str) return '';
       return new Date(str).toLocaleTimeString();
     },
     getComponentColor(comp) {
+      if (!comp) return 'bg-slate-950 text-slate-400';
       if (comp.includes('RUST')) return 'bg-orange-950 text-orange-400 border border-orange-800';
       if (comp.includes('AI')) return 'bg-purple-950 text-purple-400 border border-purple-800';
       return 'bg-blue-950 text-blue-400 border border-blue-800';
     },
     getLevelColor(level, msg) {
+      if (!msg) return 'text-slate-300';
       if (msg.includes('ANOMALY_CRITICAL') || msg.includes('Outlier')) return 'text-rose-400 font-bold';
       if (msg.includes('ANOMALY_NOISE') || msg.includes('drop')) return 'text-sky-400';
       if (level === 'WARN') return 'text-amber-400';
@@ -173,3 +186,19 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 2px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+</style>
