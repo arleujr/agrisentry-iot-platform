@@ -143,12 +143,12 @@ export default {
         // Resolve dynamic target routing schema using Vite environment injects or local fallback
         const activeUrl = import.meta.env.VITE_API_URL || this.apiUrl;
 
-        // Structured payload layout matching strict backend requirements (UUID, String, Float, ISO-Timestamp)
+        // Structured payload layout matching strict backend relational database models (UUID, Float, String, ISO-8601)
         const payload = {
-          sensor_id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", // Replace with valid active database hardware reference UUID if necessary
-          hardware_id: this.form.device_id,
+          sensor_id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", // ⚠️ Critical: Must match a valid primary key UUID inside Supabase sensors table
           value: parseFloat(this.form.reading_value),
-          created_at: new Date().toISOString() // RFC-3339 dynamic system datetime generation
+          status: "PENDING",
+          created_at: new Date().toISOString() // Generates standardized RFC-3339 UTC timestamp payload
         };
 
         const response = await fetch(`${activeUrl}/api/v1/telemetry`, {
