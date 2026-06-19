@@ -31,9 +31,13 @@
           <div class="mb-4">
             <label class="block text-xs uppercase font-bold text-slate-400 mb-2">Target Telemetry Node</label>
             <select v-model="form.device_id" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm font-mono text-slate-200 focus:outline-none focus:border-emerald-500">
-              <option value="TRK-9402-SOIL">TRK-9402-SOIL (Soil Moisture Sensor)</option>
-              <option value="TRK-9402-ENG">TRK-9402-ENG (Tractor Engine Core Temp)</option>
-              <option value="TRK-9402-PH">TRK-9402-PH (Soil Nutrient pH Level)</option>
+              <option value="ESP32-TEST-001">ESP32-TEST-001 (Sensor de Umidade Alpha)</option>
+              <option value="esp32-gate-e50080">esp32-gate-e50080 (Temperatura/Umidade)</option>
+              <option value="00:11:22:33:44:55">00:11:22:33:44:55 (Sensor de Teste Python)</option>
+              <option value="esp32-gate-7a8d33">esp32-gate-7a8d33 (Monitor Irrigação)</option>
+              <option value="esp32-gate-275e00">esp32-gate-275e00 (Sensor Estufa)</option>
+              <option value="esp32-gate-5b12c9">esp32-gate-5b12c9 (Sensor Solo/Luz)</option>
+              <option value="esp32-gate-8b3308">esp32-gate-8b3308 (Estação Meteorológica)</option>
             </select>
           </div>
 
@@ -79,11 +83,10 @@
 export default {
   data() {
     return {
-      // Default production target gateway fallback routing configurations
       apiUrl: 'https://agrisentry-iot-gateway.onrender.com', 
       scanning: false,
       form: { 
-        device_id: 'TRK-9402-SOIL', 
+        device_id: 'ESP32-TEST-001', // Alterado para um valor padrão existente no Supabase
         reading_value: 45.2 
       },
       metrics: [],
@@ -91,7 +94,6 @@ export default {
     }
   },
   computed: {
-    // Maps operational metric responses directly into reactive visual components
     metricsMap() {
       const findCount = (status) => this.metrics.find(m => m.status === status)?.count || 0;
       return [
@@ -101,7 +103,6 @@ export default {
         { label: 'Critical Outliers', count: findCount('ANOMALY_CRITICAL'), colorClass: 'text-rose-500' }
       ];
     },
-    // Computes aggregate ratio metrics to dynamically calculate ecosystem stability indices
     fieldHealth() {
       const valid = this.metrics.find(m => m.status === 'VALID')?.count || 0;
       const noise = this.metrics.find(m => m.status === 'ANOMALY_NOISE')?.count || 0;
@@ -111,15 +112,12 @@ export default {
     }
   },
   mounted() {
-    // Initialize polling scheduler pipeline instantly upon lifecycle mount hook
     this.pollEngine();
     setInterval(this.pollEngine, 2500);
   },
   methods: {
-    // Pulls analytical dashboard metrics and trace logs from backend endpoints
     async pollEngine() {
       try {
-        // Resolve dynamic target routing schema using Vite environment injects or local fallback
         const activeUrl = import.meta.env.VITE_API_URL || this.apiUrl;
 
         const mRes = await fetch(`${activeUrl}/api/v1/dashboard/metrics`);
@@ -134,16 +132,13 @@ export default {
           this.$nextTick(this.scrollToBottom);
         }
       } catch (e) {
-        // Intercept network/handshake exceptions silently during edge node gateway restart sequences
+        // Ignora erros de conexão temporários durante deploys
       }
     },
-    // Transmits manual injection data payloads meeting rigorous type matching criteria
     async dispatchTelemetry() {
       try {
-        // Resolve dynamic target routing schema using Vite environment injects or local fallback
         const activeUrl = import.meta.env.VITE_API_URL || this.apiUrl;
 
-        // Structured payload layout matching strict backend relational database models (UUID, Float, String, ISO-8601)
         const payload = {
           device_id: this.form.device_id,
           sensor_type: "SIMULATED_SENSOR",
@@ -163,7 +158,6 @@ export default {
           throw new Error(`HTTP Error Status: ${response.status}`);
         }
 
-        // Force high-frequency database cache poll synchronization instantly after ingestion confirmation
         this.pollEngine();
       } catch (e) {
         console.error("Telemetry pipeline execution crash:", e);
@@ -205,7 +199,6 @@ export default {
 </script>
 
 <style scoped>
-/* Webkit Custom Scrollbar Design Pattern for Embedded Logs Terminal */
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }
