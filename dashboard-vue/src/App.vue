@@ -79,14 +79,19 @@
 export default {
   data() {
     return {
-      apiUrl: 'https://agrisentry-gateway-rust.onrender.com', // Bind pointing to core Rust gateway node
+      // Default production target gateway fallback routing configurations
+      apiUrl: 'https://agrisentry-iot-gateway.onrender.com', 
       scanning: false,
-      form: { device_id: 'TRK-9402-SOIL', reading_value: 45.2 },
+      form: { 
+        device_id: 'TRK-9402-SOIL', 
+        reading_value: 45.2 
+      },
       metrics: [],
       logs: []
     }
   },
   computed: {
+    // Maps operational metric responses directly into reactive visual components
     metricsMap() {
       const findCount = (status) => this.metrics.find(m => m.status === status)?.count || 0;
       return [
@@ -96,6 +101,7 @@ export default {
         { label: 'Critical Outliers', count: findCount('ANOMALY_CRITICAL'), colorClass: 'text-rose-500' }
       ];
     },
+    // Computes aggregate ratio metrics to dynamically calculate ecosystem stability indices
     fieldHealth() {
       const valid = this.metrics.find(m => m.status === 'VALID')?.count || 0;
       const noise = this.metrics.find(m => m.status === 'ANOMALY_NOISE')?.count || 0;
@@ -105,36 +111,47 @@ export default {
     }
   },
   mounted() {
+    // Initialize polling scheduler pipeline instantly upon lifecycle mount hook
     this.pollEngine();
-    setInterval(this.pollEngine, 2500); // High-frequency polling interface
+    setInterval(this.pollEngine, 2500);
   },
   methods: {
+    // Pulls analytical dashboard metrics and trace logs from backend endpoints
     async pollEngine() {
       try {
-        const mRes = await fetch(`${this.apiUrl}/api/v1/dashboard/metrics`);
+        // Resolve dynamic target routing schema using Vite environment injects or local fallback
+        const activeUrl = import.meta.env.VITE_API_URL || this.apiUrl;
+
+        const mRes = await fetch(`${activeUrl}/api/v1/dashboard/metrics`);
         if (mRes.ok) {
           const data = await mRes.json();
           this.metrics = data.metrics || [];
         }
-        const lRes = await fetch(`${this.apiUrl}/api/v1/dashboard/logs`);
+
+        const lRes = await fetch(`${activeUrl}/api/v1/dashboard/logs`);
         if (lRes.ok) {
           this.logs = (await lRes.json()).reverse();
           this.$nextTick(this.scrollToBottom);
         }
       } catch (e) {
-        // Silenced specifically to prevent terminal spam if gateway restarts
+        // Intercept network/handshake exceptions silently during edge node gateway restart sequences
       }
     },
+    // Transmits manual injection data payloads meeting rigorous type matching criteria
     async dispatchTelemetry() {
       try {
-        // Agora o Payload reflete 100% a struct "SensorPayload" do Rust!
+        // Resolve dynamic target routing schema using Vite environment injects or local fallback
+        const activeUrl = import.meta.env.VITE_API_URL || this.apiUrl;
+
+        // Structured payload layout matching strict backend requirements (UUID, String, Float, ISO-Timestamp)
         const payload = {
-          device_id: this.form.device_id,
-          reading_value: parseFloat(this.form.reading_value),
-          timestamp: new Date().toISOString() // Formato UTC exigido pelo Rust (DateTime<Utc>)
+          sensor_id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", // Replace with valid active database hardware reference UUID if necessary
+          hardware_id: this.form.device_id,
+          value: parseFloat(this.form.reading_value),
+          created_at: new Date().toISOString() // RFC-3339 dynamic system datetime generation
         };
 
-        const response = await fetch(`${this.apiUrl}/api/v1/telemetry`, {
+        const response = await fetch(`${activeUrl}/api/v1/telemetry`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json' 
@@ -146,7 +163,7 @@ export default {
           throw new Error(`HTTP Error Status: ${response.status}`);
         }
 
-        // Força o frontend a buscar os dados novos assim que insere
+        // Force high-frequency database cache poll synchronization instantly after ingestion confirmation
         this.pollEngine();
       } catch (e) {
         console.error("Telemetry pipeline execution crash:", e);
@@ -188,6 +205,7 @@ export default {
 </script>
 
 <style scoped>
+/* Webkit Custom Scrollbar Design Pattern for Embedded Logs Terminal */
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }
