@@ -79,7 +79,7 @@
 export default {
   data() {
     return {
-      apiUrl: 'https://agrisentry-iot-gateway.onrender.com', // Bind pointing to core Rust gateway node
+      apiUrl: 'https://agrisentry-gateway-rust.onrender.com', // Bind pointing to core Rust gateway node
       scanning: false,
       form: { device_id: 'TRK-9402-SOIL', reading_value: 45.2 },
       metrics: [],
