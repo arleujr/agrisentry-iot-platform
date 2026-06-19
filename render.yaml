@@ -1,0 +1,39 @@
+services:
+  # 1. ENGINE DE INTELIGÊNCIA ARTIFICIAL (PYTHON)
+
+  - type: web
+    name: agrisentry-ai-engine
+    env: python
+    rootDirectory: ai-engine-python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+  # 2. BACKEND GATEWAY DE ALTA PERFORMANCE (RUST)
+  - type: web
+    name: agrisentry-gateway-rust
+    env: rust
+    rootDirectory: gateway-rust
+    buildCommand: cargo build --release
+    startCommand: ./target/release/gateway-rust
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Você vai colar a connection string do Supabase na UI do Render
+      - key: AI_API_URL
+        fromService:
+          name: agrisentry-ai-engine
+          type: web
+          property: url
+        path: /v1/analyze
+
+  # 3. PAINEL VISUAL DO USUÁRIO (VUE 3)
+  - type: web
+    name: agrisentry-dashboard
+    env: static
+    rootDirectory: dashboard-vue
+    buildCommand: npm install && npm run build
+    publishDirectory: dist
+    plan: free
