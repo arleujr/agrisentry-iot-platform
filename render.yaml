@@ -1,6 +1,5 @@
 services:
   # 1. ENGINE DE INTELIGÊNCIA ARTIFICIAL (PYTHON)
-
   - type: web
     name: agrisentry-ai-engine
     env: python
@@ -11,6 +10,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.5
+
   # 2. BACKEND GATEWAY DE ALTA PERFORMANCE (RUST)
   - type: web
     name: agrisentry-gateway-rust
@@ -21,13 +21,12 @@ services:
     plan: free
     envVars:
       - key: DATABASE_URL
-        sync: false # Você vai colar a connection string do Supabase na UI do Render
+        sync: false
       - key: AI_API_URL
         fromService:
           name: agrisentry-ai-engine
           type: web
           property: url
-        path: /v1/analyze
 
   # 3. PAINEL VISUAL DO USUÁRIO (VUE 3)
   - type: web
