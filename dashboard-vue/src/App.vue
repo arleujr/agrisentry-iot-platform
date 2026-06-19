@@ -145,10 +145,10 @@ export default {
 
         // Structured payload layout matching strict backend relational database models (UUID, Float, String, ISO-8601)
         const payload = {
-          sensor_id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", // ⚠️ Critical: Must match a valid primary key UUID inside Supabase sensors table
-          value: parseFloat(this.form.reading_value),
-          status: "PENDING",
-          created_at: new Date().toISOString() // Generates standardized RFC-3339 UTC timestamp payload
+          device_id: this.form.device_id,
+          sensor_type: "SIMULATED_SENSOR",
+          reading_value: parseFloat(this.form.reading_value),
+          timestamp: new Date().toISOString()
         };
 
         const response = await fetch(`${activeUrl}/api/v1/telemetry`, {
