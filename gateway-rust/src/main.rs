@@ -147,17 +147,22 @@ async fn main() -> std::io::Result<()> {
 
     // Configure HTTP server
     let server = HttpServer::new(move || {
-        // ✅ CORS configuration (permissive for local development)
+        // ✅ CORS configuration (permissive for local development and production)
         let cors = Cors::permissive();
 
         App::new()
             .wrap(cors) // ✅ Inject CORS middleware
             .app_data(db_client.clone())
-            .service(api::ingest_telemetry)
+            // Rotas globais obrigatórias de monitoramento do Render (baterão na raiz sem o prefixo)
             .route("/", web::get().to(health_check))
             .route("/health", web::get().to(health_check))
-            .route("/api/v1/dashboard/metrics", web::get().to(get_dashboard_metrics))
-            .route("/api/v1/dashboard/logs", web::get().to(get_system_logs))
+            // 🚀 Escopo centralizado injetando /api/v1 automaticamente para o Vue 3
+            .service(
+                web::scope("/api/v1")
+                    .service(api::ingest_telemetry) // Escopo: /api/v1/telemetry (verifique se em api.rs está #[post("/telemetry")])
+                    .route("/dashboard/metrics", web::get().to(get_dashboard_metrics)) // Escopo: /api/v1/dashboard/metrics
+                    .route("/dashboard/logs", web::get().to(get_system_logs)) // Escopo: /api/v1/dashboard/logs
+            )
     })
     .bind(("0.0.0.0", port))?
     .run();
