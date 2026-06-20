@@ -169,6 +169,7 @@
 export default {
   data() {
     return {
+      // Direct production URL targeting Render backend to bypass local Vite caching issues
       apiUrl: 'https://agrisentry-iot-gateway.onrender.com', 
       scanning: false,
       form: { 
@@ -177,6 +178,7 @@ export default {
       },
       metrics: [],
       logs: [],
+      // Local state definitions holding base placeholder nodes
       sensors: [
         { id: 'ESP32-TEST-001', name: 'Umidade Alpha', type: 'humidity', latest: '--', unit: '%', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
         { id: 'esp32-gate-e50080', name: 'Temperatura Solo', type: 'temperature', latest: '--', unit: '°C', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
@@ -186,6 +188,7 @@ export default {
     }
   },
   computed: {
+    // Maps API raw statistics data onto structured UI display metadata with case/character normalization
     metricsMap() {
       const findCount = (status) => {
         const target = status.toUpperCase().replace('_', '');
@@ -207,6 +210,7 @@ export default {
         { label: 'Critical Outliers', count: findCount('ANOMALY_CRITICAL'), colorClass: 'text-rose-500', iconBgClass: 'bg-rose-500/10 border-rose-500/20', svg: iconAlert }
       ];
     },
+    // Computes overall operation stability percentage using sanitized payload key strings
     fieldHealth() {
       const findCount = (status) => {
         const target = status.toUpperCase().replace('_', '');
@@ -225,6 +229,7 @@ export default {
     setInterval(this.pollEngine, 2500);
   },
   methods: {
+    // Resolves and returns the corresponding raw inline SVG markup corresponding to node properties
     getSensorIcon(type) {
       const icons = {
         humidity: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>`,
@@ -233,6 +238,7 @@ export default {
       };
       return icons[type] || icons.temperature;
     },
+    // Parses JS dates to relative human-readable durations
     timeAgo(dateString) {
       if (!dateString) return 'Aguardando telemetria...';
       const now = new Date();
@@ -247,6 +253,7 @@ export default {
       if (diffHours < 24) return `Atualizado há ${diffHours} h`;
       return `Atualizado há dias`;
     },
+    // Synchronizes tracking metrics and infrastructure logs directly from backend api
     async pollEngine() {
       try {
         const activeUrl = this.apiUrl;
@@ -263,29 +270,33 @@ export default {
           this.$nextTick(this.scrollToBottom);
         }
 
+        // Fetching node updates safely mapping possible Option payload fields
         const sRes = await fetch(`${activeUrl}/api/v1/dashboard/sensors/latest`);
         if (sRes.ok) {
           const apiSensors = await sRes.json();
           
-          apiSensors.forEach(apiS => {
-            const target = this.sensors.find(s => s.id === apiS.sensor_id);
-            if (target) {
-              target.name = apiS.sensor_name || target.name;
-              target.type = apiS.sensor_type || target.type;
-              target.unit = apiS.unit_of_measurement || target.unit;
-              target.latest = apiS.latest_reading !== null ? parseFloat(apiS.latest_reading).toFixed(1) : '--';
-              target.min = apiS.min_threshold !== null ? parseFloat(apiS.min_threshold).toFixed(1) : '--';
-              target.max = apiS.max_threshold !== null ? parseFloat(apiS.max_threshold).toFixed(1) : '--';
-              target.avg = apiS.arithmetic_mean !== null ? parseFloat(apiS.arithmetic_mean).toFixed(1) : '--';
-              target.status = apiS.operational_status ? apiS.operational_status.toUpperCase() : 'PENDING';
-              target.lastUpdate = this.timeAgo(apiS.last_telemetry_timestamp);
-            }
-          });
+          if (apiSensors && Array.isArray(apiSensors)) {
+            apiSensors.forEach(apiS => {
+              const target = this.sensors.find(s => s.id === apiS.sensor_id || s.id === apiS.hardware_id);
+              if (target) {
+                target.name = apiS.sensor_name || apiS.name || target.name;
+                target.type = apiS.sensor_type || apiS.type || target.type;
+                target.unit = apiS.unit_of_measurement || apiS.unit || target.unit;
+                target.latest = apiS.latest_reading !== null && apiS.latest_reading !== undefined ? parseFloat(apiS.latest_reading).toFixed(1) : '--';
+                target.min = apiS.min_threshold !== null && apiS.min_threshold !== undefined ? parseFloat(apiS.min_threshold).toFixed(1) : '--';
+                target.max = apiS.max_threshold !== null && apiS.max_threshold !== undefined ? parseFloat(apiS.max_threshold).toFixed(1) : '--';
+                target.avg = apiS.arithmetic_mean !== null && apiS.arithmetic_mean !== undefined ? parseFloat(apiS.arithmetic_mean).toFixed(1) : '--';
+                target.status = apiS.operational_status ? apiS.operational_status.toUpperCase() : 'PENDING';
+                target.lastUpdate = this.timeAgo(apiS.last_telemetry_timestamp);
+              }
+            });
+          }
         }
       } catch (e) {
         console.error("Erro na comunicação com o Gateway Rust:", e);
       }
     },
+    // Submits structured JSON hardware reading simulation down backend streams
     async dispatchTelemetry() {
       try {
         const payload = {
@@ -308,6 +319,7 @@ export default {
         console.error("Erro ao transmitir telemetria:", e);
       }
     },
+    // Simulates an Over-The-Air hardware cluster discovery cycle
     triggerOtaScan() {
       this.scanning = true;
       setTimeout(() => {
@@ -315,23 +327,28 @@ export default {
         this.pollEngine();
       }, 1200);
     },
+    // Preset injector for handling form target evaluation data ranges
     applyTemplate(val) {
       this.form.reading_value = val;
     },
+    // Controls bounding frame alignment scrolling inside terminal block
     scrollToBottom() {
       const term = this.$refs.terminal;
       if (term) term.scrollTop = term.scrollHeight;
     },
+    // Extracts timestamp values from standard operational strings
     formatTime(str) {
       if (!str) return '';
       return new Date(str).toLocaleTimeString();
     },
+    // Dynamically manages CSS styles based on origin server component tags
     getComponentColor(comp) {
       if (!comp) return 'bg-slate-950 text-slate-400';
       if (comp.includes('RUST')) return 'bg-orange-950 text-orange-400 border border-orange-800';
       if (comp.includes('AI')) return 'bg-purple-950 text-purple-400 border border-purple-800';
       return 'bg-blue-950 text-blue-400 border border-blue-800';
     },
+    // Assigns distinct theme colors matching log urgency ranks
     getLevelColor(level, msg) {
       if (!msg) return 'text-slate-300';
       if (msg.includes('ANOMALY_CRITICAL') || msg.includes('Outlier')) return 'text-rose-400 font-bold';
@@ -344,6 +361,7 @@ export default {
 </script>
 
 <style scoped>
+/* Thin scrollbar design styling rules */
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }
