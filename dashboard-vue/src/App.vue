@@ -89,7 +89,7 @@
             </div>
             <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-medium">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              Atualizado {{ sensor.lastUpdate }}
+              {{ sensor.lastUpdate }}
             </p>
           </div>
 
@@ -177,7 +177,13 @@ export default {
       },
       metrics: [],
       logs: [],
-      sensors: [] // AGORA VAZIO! Será preenchido dinamicamente pelo banco de dados via Rust
+      // Estrutura base de carregamento preservada para manter o Dropdown operacional
+      sensors: [
+        { id: 'ESP32-TEST-001', name: 'Umidade Alpha', type: 'humidity', latest: '--', unit: '%', min: 38.5, max: 48.1, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
+        { id: 'esp32-gate-e50080', name: 'Temperatura Solo', type: 'temperature', latest: '--', unit: '°C', min: 22.1, max: 31.0, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
+        { id: 'esp32-gate-7a8d33', name: 'Monitor Irrigação', type: 'water', latest: '--', unit: 'L/m', min: 0.0, max: 15.5, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
+        { id: 'esp32-gate-275e00', name: 'Sensor Estufa', type: 'temperature', latest: '--', unit: '°C', min: 25.0, max: 88.0, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' }
+      ]
     }
   },
   computed: {
@@ -228,9 +234,8 @@ export default {
       };
       return icons[type] || icons.temperature;
     },
-    // Formata o timestamp real do banco de dados em um texto amigável
     timeAgo(dateString) {
-      if (!dateString) return 'Desconhecido';
+      if (!dateString) return 'Aguardando telemetria...';
       const now = new Date();
       const past = new Date(dateString);
       const diffMs = now - past;
@@ -238,10 +243,10 @@ export default {
       const diffMins = Math.floor(diffSecs / 60);
       const diffHours = Math.floor(diffMins / 60);
 
-      if (diffSecs < 60) return 'agora mesmo';
-      if (diffMins < 60) return `há ${diffMins} min`;
-      if (diffHours < 24) return `há ${diffHours} h`;
-      return `há dias`;
+      if (diffSecs < 60) return 'Atualizado agora mesmo';
+      if (diffMins < 60) return `Atualizado há ${diffMins} min`;
+      if (diffHours < 24) return `Atualizado há ${diffHours} h`;
+      return `Atualizado há dias`;
     },
     async pollEngine() {
       try {
@@ -259,22 +264,20 @@ export default {
           this.$nextTick(this.scrollToBottom);
         }
 
-        // NOVO: Busca os cards reais em tempo real
         const sRes = await fetch(`${activeUrl}/api/v1/dashboard/sensors/latest`);
         if (sRes.ok) {
           const apiSensors = await sRes.json();
-          this.sensors = apiSensors.map(s => ({
-            id: s.sensor_id,
-            name: s.sensor_name || s.sensor_id,
-            type: s.sensor_type || 'temperature',
-            latest: s.latest_reading !== null ? parseFloat(s.latest_reading).toFixed(1) : '--',
-            unit: s.unit_of_measurement || '',
-            min: s.min_threshold !== null ? parseFloat(s.min_threshold).toFixed(1) : '--',
-            max: s.max_threshold !== null ? parseFloat(s.max_threshold).toFixed(1) : '--',
-            avg: s.arithmetic_mean !== null ? parseFloat(s.arithmetic_mean).toFixed(1) : '--',
-            status: s.operational_status ? s.operational_status.toUpperCase() : 'PENDING',
-            lastUpdate: this.timeAgo(s.last_telemetry_timestamp)
-          }));
+          
+          // Itera sobre a resposta do Rust e mescla no estado local fixo
+          apiSensors.forEach(apiS => {
+            const target = this.sensors.find(s => s.id === apiS.sensor_id);
+            if (target) {
+              target.latest = apiS.latest_reading !== null ? parseFloat(apiS.latest_reading).toFixed(1) : target.latest;
+              target.avg = apiS.arithmetic_mean !== null ? parseFloat(apiS.arithmetic_mean).toFixed(1) : target.avg;
+              target.status = apiS.operational_status ? apiS.operational_status.toUpperCase() : 'PENDING';
+              target.lastUpdate = this.timeAgo(apiS.last_telemetry_timestamp);
+            }
+          });
         }
       } catch (e) {
         console.error("Erro na comunicação com o Gateway Rust:", e);
@@ -297,7 +300,6 @@ export default {
 
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         
-        // Simula um loading no botão do Form (se quiser implementar depois)
         this.pollEngine();
       } catch (e) {
         console.error("Erro ao transmitir telemetria:", e);
