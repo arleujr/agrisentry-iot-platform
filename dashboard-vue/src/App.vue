@@ -78,7 +78,7 @@
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
                     :class="sensor.status === 'VALID' ? 'bg-emerald-400' : (sensor.status.includes('ANOMALY') ? 'bg-rose-400' : 'bg-amber-400')"></span>
               <span class="relative inline-flex rounded-full h-3 w-3"
-                    :class="sensor.status === 'VALID' ? 'bg-emerald-500' : (sensor.status.includes('ANOMALY') ? 'bg-rose-500' : 'bg-amber-500')"></span>
+                    :class="sensor.status === 'VALID' ? 'bg-emerald-500' : (sensor.status.includes('ANOMALY') ? 'bg-rose-500' : 'bg-amber-400')"></span>
             </div>
           </div>
 
@@ -177,12 +177,11 @@ export default {
       },
       metrics: [],
       logs: [],
-      // Estrutura base de carregamento preservada para manter o Dropdown operacional
       sensors: [
-        { id: 'ESP32-TEST-001', name: 'Umidade Alpha', type: 'humidity', latest: '--', unit: '%', min: 38.5, max: 48.1, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
-        { id: 'esp32-gate-e50080', name: 'Temperatura Solo', type: 'temperature', latest: '--', unit: '°C', min: 22.1, max: 31.0, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
-        { id: 'esp32-gate-7a8d33', name: 'Monitor Irrigação', type: 'water', latest: '--', unit: 'L/m', min: 0.0, max: 15.5, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
-        { id: 'esp32-gate-275e00', name: 'Sensor Estufa', type: 'temperature', latest: '--', unit: '°C', min: 25.0, max: 88.0, avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' }
+        { id: 'ESP32-TEST-001', name: 'Umidade Alpha', type: 'humidity', latest: '--', unit: '%', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
+        { id: 'esp32-gate-e50080', name: 'Temperatura Solo', type: 'temperature', latest: '--', unit: '°C', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
+        { id: 'esp32-gate-7a8d33', name: 'Monitor Irrigação', type: 'water', latest: '--', unit: 'L/m', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' },
+        { id: 'esp32-gate-275e00', name: 'Sensor Estufa', type: 'temperature', latest: '--', unit: '°C', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Aguardando telemetria...' }
       ]
     }
   },
@@ -268,12 +267,16 @@ export default {
         if (sRes.ok) {
           const apiSensors = await sRes.json();
           
-          // Itera sobre a resposta do Rust e mescla no estado local fixo
           apiSensors.forEach(apiS => {
             const target = this.sensors.find(s => s.id === apiS.sensor_id);
             if (target) {
-              target.latest = apiS.latest_reading !== null ? parseFloat(apiS.latest_reading).toFixed(1) : target.latest;
-              target.avg = apiS.arithmetic_mean !== null ? parseFloat(apiS.arithmetic_mean).toFixed(1) : target.avg;
+              target.name = apiS.sensor_name || target.name;
+              target.type = apiS.sensor_type || target.type;
+              target.unit = apiS.unit_of_measurement || target.unit;
+              target.latest = apiS.latest_reading !== null ? parseFloat(apiS.latest_reading).toFixed(1) : '--';
+              target.min = apiS.min_threshold !== null ? parseFloat(apiS.min_threshold).toFixed(1) : '--';
+              target.max = apiS.max_threshold !== null ? parseFloat(apiS.max_threshold).toFixed(1) : '--';
+              target.avg = apiS.arithmetic_mean !== null ? parseFloat(apiS.arithmetic_mean).toFixed(1) : '--';
               target.status = apiS.operational_status ? apiS.operational_status.toUpperCase() : 'PENDING';
               target.lastUpdate = this.timeAgo(apiS.last_telemetry_timestamp);
             }
