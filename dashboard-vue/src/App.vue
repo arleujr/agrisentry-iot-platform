@@ -43,7 +43,7 @@
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       <div v-for="(metric, idx) in metricsMap" :key="idx" class="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex items-center gap-4 hover:border-slate-700 transition-colors shadow-xl shadow-black/20">
         <div class="p-3 rounded-2xl border" :class="metric.iconBgClass">
-          <div v-vhtml="metric.svg" class="w-6 h-6" :class="metric.colorClass"></div>
+          <div v-html="metric.svg" class="w-6 h-6" :class="metric.colorClass"></div>
         </div>
         <div>
           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ metric.label }}</span>
@@ -64,7 +64,7 @@
         <div v-for="sensor in sensors" :key="sensor.id" class="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group hover:border-slate-700 transition-all shadow-xl shadow-black/20">
           
           <div class="absolute -top-10 -right-10 w-32 h-32 blur-3xl opacity-10 transition-all group-hover:opacity-20"
-               :class="sensor.status === 'VALID' ? 'bg-emerald-500' : 'bg-rose-500'"></div>
+               :class="sensor.status === 'VALID' ? 'bg-emerald-500' : (sensor.status.includes('ANOMALY') ? 'bg-rose-500' : 'bg-amber-500')"></div>
 
           <div class="flex justify-between items-start mb-4 relative z-10">
             <div class="flex items-center gap-3">
@@ -76,9 +76,9 @@
             </div>
             <div class="flex h-3 w-3 relative mt-1">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                    :class="sensor.status === 'VALID' ? 'bg-emerald-400' : 'bg-rose-400'"></span>
+                    :class="sensor.status === 'VALID' ? 'bg-emerald-400' : (sensor.status.includes('ANOMALY') ? 'bg-rose-400' : 'bg-amber-400')"></span>
               <span class="relative inline-flex rounded-full h-3 w-3"
-                    :class="sensor.status === 'VALID' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                    :class="sensor.status === 'VALID' ? 'bg-emerald-500' : (sensor.status.includes('ANOMALY') ? 'bg-rose-500' : 'bg-amber-500')"></span>
             </div>
           </div>
 
@@ -120,13 +120,10 @@
           <div class="mb-4">
             <label class="block text-xs uppercase font-bold text-slate-400 mb-2">Target Telemetry Node</label>
             <select v-model="form.device_id" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm font-mono text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors">
-              <option value="ESP32-TEST-001">ESP32-TEST-001 (Sensor de Umidade Alpha)</option>
-              <option value="esp32-gate-e50080">esp32-gate-e50080 (Temperatura/Umidade)</option>
-              <option value="00:11:22:33:44:55">00:11:22:33:44:55 (Sensor de Teste Python)</option>
-              <option value="esp32-gate-7a8d33">esp32-gate-7a8d33 (Monitor Irrigação)</option>
-              <option value="esp32-gate-275e00">esp32-gate-275e00 (Sensor Estufa)</option>
-              <option value="esp32-gate-5b12c9">esp32-gate-5b12c9 (Sensor Solo/Luz)</option>
-              <option value="esp32-gate-8b3308">esp32-gate-8b3308 (Estação Meteorológica)</option>
+              <option v-for="sensor in sensors" :key="sensor.id" :value="sensor.id">
+                {{ sensor.id }} ({{ sensor.name }})
+              </option>
+              <option value="00:11:22:33:44:55">00:11:22:33:44:55 (Sensor Simulado Oculto)</option>
             </select>
           </div>
 
@@ -172,7 +169,6 @@
 export default {
   data() {
     return {
-      // Direct production URL targeting Render backend to bypass local Vite caching issues
       apiUrl: 'https://agrisentry-iot-gateway.onrender.com', 
       scanning: false,
       form: { 
@@ -181,17 +177,10 @@ export default {
       },
       metrics: [],
       logs: [],
-      // Mock tracking dataset simulating distributed IoT mesh components architecture
-      sensors: [
-        { id: 'ESP32-TEST-001', name: 'Umidade Alpha', type: 'humidity', latest: 45.2, unit: '%', min: 38.5, max: 48.1, avg: 43.0, status: 'VALID', lastUpdate: 'agora mesmo' },
-        { id: 'esp32-gate-e50080', name: 'Temperatura Solo', type: 'temperature', latest: 27.4, unit: '°C', min: 22.1, max: 31.0, avg: 26.5, status: 'VALID', lastUpdate: 'há 2 min' },
-        { id: 'esp32-gate-7a8d33', name: 'Monitor Irrigação', type: 'water', latest: 12.0, unit: 'L/m', min: 0.0, max: 15.5, avg: 8.2, status: 'VALID', lastUpdate: 'há 5 min' },
-        { id: 'esp32-gate-275e00', name: 'Sensor Estufa', type: 'temperature', latest: 85.3, unit: '°C', min: 25.0, max: 88.0, avg: 40.1, status: 'ANOMALY', lastUpdate: 'há 10 seg' }
-      ]
+      sensors: [] // AGORA VAZIO! Será preenchido dinamicamente pelo banco de dados via Rust
     }
   },
   computed: {
-    // Maps API raw statistics data onto structured UI display metadata with case/character normalization
     metricsMap() {
       const findCount = (status) => {
         const target = status.toUpperCase().replace('_', '');
@@ -201,7 +190,6 @@ export default {
         })?.count || 0;
       };
 
-      // Inline Heroicons SVG definitions to bypass external resource library overheads
       const iconClock = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
       const iconCheck = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
       const iconWifi = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path></svg>`;
@@ -214,7 +202,6 @@ export default {
         { label: 'Critical Outliers', count: findCount('ANOMALY_CRITICAL'), colorClass: 'text-rose-500', iconBgClass: 'bg-rose-500/10 border-rose-500/20', svg: iconAlert }
       ];
     },
-    // Computes overall operation stability percentage using sanitized payload key strings
     fieldHealth() {
       const findCount = (status) => {
         const target = status.toUpperCase().replace('_', '');
@@ -229,12 +216,10 @@ export default {
     }
   },
   mounted() {
-    // Register execution loop on initial DOM mount lifecycle hook
     this.pollEngine();
     setInterval(this.pollEngine, 2500);
   },
   methods: {
-    // Resolves and returns the corresponding raw inline SVG markup corresponding to node properties 
     getSensorIcon(type) {
       const icons = {
         humidity: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>`,
@@ -243,7 +228,21 @@ export default {
       };
       return icons[type] || icons.temperature;
     },
-    // Synchronizes tracking metrics and infrastructure logs directly from backend api
+    // Formata o timestamp real do banco de dados em um texto amigável
+    timeAgo(dateString) {
+      if (!dateString) return 'Desconhecido';
+      const now = new Date();
+      const past = new Date(dateString);
+      const diffMs = now - past;
+      const diffSecs = Math.floor(diffMs / 1000);
+      const diffMins = Math.floor(diffSecs / 60);
+      const diffHours = Math.floor(diffMins / 60);
+
+      if (diffSecs < 60) return 'agora mesmo';
+      if (diffMins < 60) return `há ${diffMins} min`;
+      if (diffHours < 24) return `há ${diffHours} h`;
+      return `há dias`;
+    },
     async pollEngine() {
       try {
         const activeUrl = this.apiUrl;
@@ -252,26 +251,37 @@ export default {
         if (mRes.ok) {
           const data = await mRes.json();
           this.metrics = data.metrics || [];
-        } else {
-          console.warn(`Metrics failed with status: ${mRes.status}`);
         }
 
         const lRes = await fetch(`${activeUrl}/api/v1/dashboard/logs`);
         if (lRes.ok) {
           this.logs = (await lRes.json()).reverse();
           this.$nextTick(this.scrollToBottom);
-        } else {
-          console.warn(`Logs failed with status: ${lRes.status}`);
+        }
+
+        // NOVO: Busca os cards reais em tempo real
+        const sRes = await fetch(`${activeUrl}/api/v1/dashboard/sensors/latest`);
+        if (sRes.ok) {
+          const apiSensors = await sRes.json();
+          this.sensors = apiSensors.map(s => ({
+            id: s.sensor_id,
+            name: s.sensor_name || s.sensor_id,
+            type: s.sensor_type || 'temperature',
+            latest: s.latest_reading !== null ? parseFloat(s.latest_reading).toFixed(1) : '--',
+            unit: s.unit_of_measurement || '',
+            min: s.min_threshold !== null ? parseFloat(s.min_threshold).toFixed(1) : '--',
+            max: s.max_threshold !== null ? parseFloat(s.max_threshold).toFixed(1) : '--',
+            avg: s.arithmetic_mean !== null ? parseFloat(s.arithmetic_mean).toFixed(1) : '--',
+            status: s.operational_status ? s.operational_status.toUpperCase() : 'PENDING',
+            lastUpdate: this.timeAgo(s.last_telemetry_timestamp)
+          }));
         }
       } catch (e) {
         console.error("Erro na comunicação com o Gateway Rust:", e);
       }
     },
-    // Submits structured JSON hardware reading simulation down backend streams
     async dispatchTelemetry() {
       try {
-        const activeUrl = this.apiUrl;
-
         const payload = {
           device_id: this.form.device_id,
           sensor_type: "SIMULATED_SENSOR",
@@ -279,24 +289,20 @@ export default {
           timestamp: new Date().toISOString()
         };
 
-        const response = await fetch(`${activeUrl}/api/v1/telemetry`, {
+        const response = await fetch(`${this.apiUrl}/api/v1/telemetry`, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json' 
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP Error Status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        
+        // Simula um loading no botão do Form (se quiser implementar depois)
         this.pollEngine();
       } catch (e) {
         console.error("Erro ao transmitir telemetria:", e);
       }
     },
-    // Simulates an Over-The-Air hardware cluster discovery cycle
     triggerOtaScan() {
       this.scanning = true;
       setTimeout(() => {
@@ -304,28 +310,23 @@ export default {
         this.pollEngine();
       }, 1200);
     },
-    // Preset injector for handling form target evaluation data ranges
     applyTemplate(val) {
       this.form.reading_value = val;
     },
-    // Controls bounding frame alignment scrolling inside terminal block
     scrollToBottom() {
       const term = this.$refs.terminal;
       if (term) term.scrollTop = term.scrollHeight;
     },
-    // Extracts timestamp values from standard operational strings
     formatTime(str) {
       if (!str) return '';
       return new Date(str).toLocaleTimeString();
     },
-    // Dynamically manages CSS styles based on origin server component tags
     getComponentColor(comp) {
       if (!comp) return 'bg-slate-950 text-slate-400';
       if (comp.includes('RUST')) return 'bg-orange-950 text-orange-400 border border-orange-800';
       if (comp.includes('AI')) return 'bg-purple-950 text-purple-400 border border-purple-800';
       return 'bg-blue-950 text-blue-400 border border-blue-800';
     },
-    // Assigns distinct theme colors matching log urgency ranks
     getLevelColor(level, msg) {
       if (!msg) return 'text-slate-300';
       if (msg.includes('ANOMALY_CRITICAL') || msg.includes('Outlier')) return 'text-rose-400 font-bold';
@@ -338,7 +339,6 @@ export default {
 </script>
 
 <style scoped>
-/* Thin scrollbar design styling rules */
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }
