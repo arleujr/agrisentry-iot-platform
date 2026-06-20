@@ -83,10 +83,11 @@
 export default {
   data() {
     return {
+      // Direct production URL targeting Render backend to bypass local Vite caching issues
       apiUrl: 'https://agrisentry-iot-gateway.onrender.com', 
       scanning: false,
       form: { 
-        device_id: 'ESP32-TEST-001', // Alterado para um valor padrão existente no Supabase
+        device_id: 'ESP32-TEST-001', 
         reading_value: 45.2 
       },
       metrics: [],
@@ -94,6 +95,7 @@ export default {
     }
   },
   computed: {
+    // Maps API raw statistics data onto structured UI display metadata
     metricsMap() {
       const findCount = (status) => this.metrics.find(m => m.status === status)?.count || 0;
       return [
@@ -103,6 +105,7 @@ export default {
         { label: 'Critical Outliers', count: findCount('ANOMALY_CRITICAL'), colorClass: 'text-rose-500' }
       ];
     },
+    // Computes overall operation stability percentage based on validated records
     fieldHealth() {
       const valid = this.metrics.find(m => m.status === 'VALID')?.count || 0;
       const noise = this.metrics.find(m => m.status === 'ANOMALY_NOISE')?.count || 0;
@@ -112,32 +115,41 @@ export default {
     }
   },
   mounted() {
+    // Initialize polling process on lifecycle mount
     this.pollEngine();
     setInterval(this.pollEngine, 2500);
   },
   methods: {
+    // Polls metrics and telemetry log events from the backend architecture
     async pollEngine() {
       try {
-        const activeUrl = import.meta.env.VITE_API_URL || this.apiUrl;
+        const activeUrl = this.apiUrl; // Strictly targets the configured Render production endpoint
 
+        // Fetch aggregation metrics for the main upper dashboard view
         const mRes = await fetch(`${activeUrl}/api/v1/dashboard/metrics`);
         if (mRes.ok) {
           const data = await mRes.json();
           this.metrics = data.metrics || [];
+        } else {
+          console.warn(`Metrics fetch failed with status: ${mRes.status}`);
         }
 
+        // Fetch system pipeline telemetry logs
         const lRes = await fetch(`${activeUrl}/api/v1/dashboard/logs`);
         if (lRes.ok) {
           this.logs = (await lRes.json()).reverse();
           this.$nextTick(this.scrollToBottom);
+        } else {
+          console.warn(`Logs fetch failed with status: ${lRes.status}`);
         }
       } catch (e) {
-        // Ignora erros de conexão temporários durante deploys
+        console.error("Error communicating with the Rust Gateway:", e);
       }
     },
+    // Submits simulated JSON telemetry payloads down into the processing pipeline
     async dispatchTelemetry() {
       try {
-        const activeUrl = import.meta.env.VITE_API_URL || this.apiUrl;
+        const activeUrl = this.apiUrl;
 
         const payload = {
           device_id: this.form.device_id,
@@ -158,11 +170,13 @@ export default {
           throw new Error(`HTTP Error Status: ${response.status}`);
         }
 
+        // Refresh tracking values immediately following dispatch success
         this.pollEngine();
       } catch (e) {
-        console.error("Telemetry pipeline execution crash:", e);
+        console.error("Error transmitting telemetry data:", e);
       }
     },
+    // Simulates an Over-The-Air hardware device scan process
     triggerOtaScan() {
       this.scanning = true;
       setTimeout(() => {
@@ -170,23 +184,28 @@ export default {
         this.pollEngine();
       }, 1200);
     },
+    // Preset injector for testing edge cases within simulation telemetry form
     applyTemplate(val) {
       this.form.reading_value = val;
     },
+    // Manages scrolling element bounds inside the terminal mock wrapper
     scrollToBottom() {
       const term = this.$refs.terminal;
       if (term) term.scrollTop = term.scrollHeight;
     },
+    // Strips full ISO strings to simple local timestamp representations
     formatTime(str) {
       if (!str) return '';
       return new Date(str).toLocaleTimeString();
     },
+    // Dynamically manages CSS styles based on microservice origin tags
     getComponentColor(comp) {
       if (!comp) return 'bg-slate-950 text-slate-400';
       if (comp.includes('RUST')) return 'bg-orange-950 text-orange-400 border border-orange-800';
       if (comp.includes('AI')) return 'bg-purple-950 text-purple-400 border border-purple-800';
       return 'bg-blue-950 text-blue-400 border border-blue-800';
     },
+    // Determines dynamic colors matching standard infrastructure log urgency ranks
     getLevelColor(level, msg) {
       if (!msg) return 'text-slate-300';
       if (msg.includes('ANOMALY_CRITICAL') || msg.includes('Outlier')) return 'text-rose-400 font-bold';
@@ -199,6 +218,7 @@ export default {
 </script>
 
 <style scoped>
+/* Customs scrollbar formatting styling parameters */
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }
