@@ -43,11 +43,71 @@
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       <div v-for="(metric, idx) in metricsMap" :key="idx" class="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex items-center gap-4 hover:border-slate-700 transition-colors shadow-xl shadow-black/20">
         <div class="p-3 rounded-2xl border" :class="metric.iconBgClass">
-          <div v-html="metric.svg" class="w-6 h-6" :class="metric.colorClass"></div>
+          <div v-vhtml="metric.svg" class="w-6 h-6" :class="metric.colorClass"></div>
         </div>
         <div>
           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ metric.label }}</span>
           <div class="text-3xl font-black tracking-tight text-white mt-0.5">{{ metric.count }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <div class="flex items-center justify-between mb-4 px-2">
+        <h2 class="text-sm font-bold tracking-widest uppercase text-slate-400">Live Field Nodes</h2>
+        <span class="text-xs font-mono text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 shadow-inner">
+          Active Nodes: {{ sensors.length }}
+        </span>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div v-for="sensor in sensors" :key="sensor.id" class="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group hover:border-slate-700 transition-all shadow-xl shadow-black/20">
+          
+          <div class="absolute -top-10 -right-10 w-32 h-32 blur-3xl opacity-10 transition-all group-hover:opacity-20"
+               :class="sensor.status === 'VALID' ? 'bg-emerald-500' : 'bg-rose-500'"></div>
+
+          <div class="flex justify-between items-start mb-4 relative z-10">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400" v-html="getSensorIcon(sensor.type)"></div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-200">{{ sensor.name }}</h3>
+                <p class="text-[10px] text-slate-500 font-mono mt-0.5">{{ sensor.id }}</p>
+              </div>
+            </div>
+            <div class="flex h-3 w-3 relative mt-1">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                    :class="sensor.status === 'VALID' ? 'bg-emerald-400' : 'bg-rose-400'"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3"
+                    :class="sensor.status === 'VALID' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+            </div>
+          </div>
+
+          <div class="mb-5 relative z-10">
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-black text-white tracking-tight">{{ sensor.latest }}</span>
+              <span class="text-lg font-bold text-slate-500">{{ sensor.unit }}</span>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-medium">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Atualizado {{ sensor.lastUpdate }}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800/60 relative z-10">
+            <div>
+              <span class="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-1">Mínima</span>
+              <span class="text-sm font-mono text-slate-300">{{ sensor.min }}<span class="text-[10px] text-slate-500 ml-0.5">{{ sensor.unit }}</span></span>
+            </div>
+            <div class="px-2 border-x border-slate-800/60">
+              <span class="block text-[9px] uppercase tracking-wider text-emerald-500 font-bold mb-1">Média</span>
+              <span class="text-sm font-mono text-white">{{ sensor.avg }}<span class="text-[10px] text-slate-500 ml-0.5">{{ sensor.unit }}</span></span>
+            </div>
+            <div class="text-right">
+              <span class="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-1">Máxima</span>
+              <span class="text-sm font-mono text-slate-300">{{ sensor.max }}<span class="text-[10px] text-slate-500 ml-0.5">{{ sensor.unit }}</span></span>
+            </div>
+          </div>
+
         </div>
       </div>
     </section>
@@ -120,7 +180,14 @@ export default {
         reading_value: 45.2 
       },
       metrics: [],
-      logs: []
+      logs: [],
+      // Mock tracking dataset simulating distributed IoT mesh components architecture
+      sensors: [
+        { id: 'ESP32-TEST-001', name: 'Umidade Alpha', type: 'humidity', latest: 45.2, unit: '%', min: 38.5, max: 48.1, avg: 43.0, status: 'VALID', lastUpdate: 'agora mesmo' },
+        { id: 'esp32-gate-e50080', name: 'Temperatura Solo', type: 'temperature', latest: 27.4, unit: '°C', min: 22.1, max: 31.0, avg: 26.5, status: 'VALID', lastUpdate: 'há 2 min' },
+        { id: 'esp32-gate-7a8d33', name: 'Monitor Irrigação', type: 'water', latest: 12.0, unit: 'L/m', min: 0.0, max: 15.5, avg: 8.2, status: 'VALID', lastUpdate: 'há 5 min' },
+        { id: 'esp32-gate-275e00', name: 'Sensor Estufa', type: 'temperature', latest: 85.3, unit: '°C', min: 25.0, max: 88.0, avg: 40.1, status: 'ANOMALY', lastUpdate: 'há 10 seg' }
+      ]
     }
   },
   computed: {
@@ -167,6 +234,15 @@ export default {
     setInterval(this.pollEngine, 2500);
   },
   methods: {
+    // Resolves and returns the corresponding raw inline SVG markup corresponding to node properties 
+    getSensorIcon(type) {
+      const icons = {
+        humidity: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>`,
+        temperature: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
+        water: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>`
+      };
+      return icons[type] || icons.temperature;
+    },
     // Synchronizes tracking metrics and infrastructure logs directly from backend api
     async pollEngine() {
       try {
