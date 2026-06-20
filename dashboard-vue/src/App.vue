@@ -95,9 +95,16 @@ export default {
     }
   },
   computed: {
-    // Maps API raw statistics data onto structured UI display metadata
+    // Maps API raw statistics data onto structured UI display metadata with sanitization
     metricsMap() {
-      const findCount = (status) => this.metrics.find(m => m.status === status)?.count || 0;
+      const findCount = (status) => {
+        const target = status.toUpperCase().replace('_', '');
+        return this.metrics.find(m => {
+          const current = m.status.toUpperCase().replace('_', '');
+          return current === target || current.includes(target) || target.includes(current);
+        })?.count || 0;
+      };
+
       return [
         { label: 'Pending Evaluation', count: findCount('PENDING'), colorClass: 'text-amber-400' },
         { label: 'Validated Records', count: findCount('VALID'), colorClass: 'text-emerald-400' },
@@ -105,11 +112,16 @@ export default {
         { label: 'Critical Outliers', count: findCount('ANOMALY_CRITICAL'), colorClass: 'text-rose-500' }
       ];
     },
-    // Computes overall operation stability percentage based on validated records
+    // Computes overall operation stability percentage using standardized key lookup
     fieldHealth() {
-      const valid = this.metrics.find(m => m.status === 'VALID')?.count || 0;
-      const noise = this.metrics.find(m => m.status === 'ANOMALY_NOISE')?.count || 0;
-      const critical = this.metrics.find(m => m.status === 'ANOMALY_CRITICAL')?.count || 0;
+      const findCount = (status) => {
+        const target = status.toUpperCase().replace('_', '');
+        return this.metrics.find(m => m.status.toUpperCase().replace('_', '').includes(target))?.count || 0;
+      };
+
+      const valid = findCount('VALID');
+      const noise = findCount('ANOMALY_NOISE');
+      const critical = findCount('ANOMALY_CRITICAL');
       const total = valid + noise + critical;
       return total ? Math.round((valid / total) * 100) : 100;
     }
