@@ -184,7 +184,7 @@ export default {
   data() {
     return {
       // Production URL targeting Render asynchronous backend architecture
-      apiUrl: 'https://agrisentry-iot-gateway.onrender.com', 
+      apiUrl: import.meta.env.VITE_API_URL || 'https://agrisentry-iot-gateway.onrender.com', 
       scanning: false,
       form: { 
         selected_devices: ['ESP32-TEST-001'], 
