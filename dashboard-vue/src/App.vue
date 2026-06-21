@@ -9,7 +9,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-3xl font-black tracking-tight text-white">AgriSentry<span class="text-emerald-400">.Enterprise</span></h1>
+          <h1 class="text-3xl font-black tracking-tight text-white">AgriSentry<span class="text-emerald-400">.</span></h1>
           <p class="text-sm text-slate-400 font-medium mt-1">Agricultural Operations Center (AOC) • Core AI Telemetry Analytics</p>
         </div>
       </div>
