@@ -289,7 +289,7 @@ export default {
           this.$nextTick(this.scrollToBottom);
         }
 
-        const sRes = await fetch(`${activeUrl}/api/v1/dashboard/sensors/latest`);
+        const sRes = await fetch(`${activeUrl}/api/v1/nodes`);
         if (sRes.ok) {
           const apiSensors = await sRes.json();
           
