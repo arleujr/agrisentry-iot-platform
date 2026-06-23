@@ -183,28 +183,21 @@
 export default {
   data() {
     return {
-      // Production URL targeting Render asynchronous backend architecture
       apiUrl: import.meta.env.VITE_API_URL || 'https://agrisentry-iot-gateway.onrender.com', 
       scanning: false,
       form: { 
-        selected_devices: ['ESP32-TEST-001'], 
+        selected_devices: [], // Começa vazio, vamos preencher com um real
         reading_value: 45.2,
-        batch_count: 1, // Standardizing X payloads per target frame sequence
-        time_interval: 15 // Standardizing retrogressive delta steps in minutes
+        batch_count: 1, 
+        time_interval: 15 
       },
       metrics: [],
       logs: [],
-      // Standard localized array representing edge nodes configuration matrices
-      sensors: [
-        { id: 'ESP32-TEST-001', name: 'Humidity Alpha', type: 'humidity', latest: '--', unit: '%', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Awaiting synchronization...' },
-        { id: 'esp32-gate-e50080', name: 'Soil Temperature', type: 'temperature', latest: '--', unit: '°C', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Awaiting synchronization...' },
-        { id: 'esp32-gate-7a8d33', name: 'Irrigation Monitor', type: 'water', latest: '--', unit: 'L/m', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Awaiting synchronization...' },
-        { id: 'esp32-gate-275e00', name: 'Greenhouse Sensor', type: 'temperature', latest: '--', unit: '°C', min: '--', max: '--', avg: '--', status: 'PENDING', lastUpdate: 'Awaiting synchronization...' }
-      ]
+      // Agora a lista começa VAZIA. O Front-end não inventa mais ninguém!
+      sensors: []
     }
   },
   computed: {
-    // Maps backend statistics maps onto system display models
     metricsMap() {
       const findCount = (status) => {
         const target = status.toUpperCase().replace('_', '');
@@ -226,7 +219,6 @@ export default {
         { label: 'Critical Outliers', count: findCount('ANOMALY_CRITICAL'), colorClass: 'text-rose-500', iconBgClass: 'bg-rose-500/10 border-rose-500/20', svg: iconAlert }
       ];
     },
-    // Computes comprehensive hardware cluster stability index percentage
     fieldHealth() {
       const findCount = (status) => {
         const target = status.toUpperCase().replace('_', '');
@@ -245,7 +237,6 @@ export default {
     setInterval(this.pollEngine, 2500);
   },
   methods: {
-    // Maps physical sensor categories onto custom raw inline SVG elements
     getSensorIcon(type) {
       const icons = {
         humidity: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>`,
@@ -254,7 +245,6 @@ export default {
       };
       return icons[type] || icons.temperature;
     },
-    // Converts ISO String tracking timestamps to high-fidelity human relative time
     timeAgo(dateString) {
       if (!dateString) return 'Awaiting synchronization...';
       const now = new Date();
@@ -269,7 +259,6 @@ export default {
       if (diffHours < 24) return `Synchronized ${diffHours}h ago`;
       return `Synchronized days ago`;
     },
-    // Executes continuous synchronization cycles pulling core dashboard states
     async pollEngine() {
       try {
         const activeUrl = this.apiUrl;
@@ -283,7 +272,6 @@ export default {
         const lRes = await fetch(`${activeUrl}/api/v1/dashboard/logs`);
         if (lRes.ok) {
           const rawLogs = await lRes.json();
-          // Merging locally injected simulation logs with real-time database server trails
           const serverLogs = rawLogs.reverse();
           this.logs = [...this.logs.filter(l => l.local), ...serverLogs].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
           this.$nextTick(this.scrollToBottom);
@@ -294,27 +282,32 @@ export default {
           const apiSensors = await sRes.json();
           
           if (apiSensors && Array.isArray(apiSensors)) {
-            apiSensors.forEach(apiS => {
-              const target = this.sensors.find(s => s.id === apiS.sensor_id || s.id === apiS.hardware_id);
-              if (target) {
-                target.name = apiS.sensor_name || apiS.name || target.name;
-                target.type = apiS.sensor_type || apiS.type || target.type;
-                target.unit = apiS.unit_of_measurement || apiS.unit || target.unit;
-                target.latest = apiS.latest_reading !== null && apiS.latest_reading !== undefined ? parseFloat(apiS.latest_reading).toFixed(1) : '--';
-                target.min = apiS.min_threshold !== null && apiS.min_threshold !== undefined ? parseFloat(apiS.min_threshold).toFixed(1) : '--';
-                target.max = apiS.max_threshold !== null && apiS.max_threshold !== undefined ? parseFloat(apiS.max_threshold).toFixed(1) : '--';
-                target.avg = apiS.arithmetic_mean !== null && apiS.arithmetic_mean !== undefined ? parseFloat(apiS.arithmetic_mean).toFixed(1) : '--';
-                target.status = apiS.operational_status ? apiS.operational_status.toUpperCase() : 'PENDING';
-                target.lastUpdate = this.timeAgo(apiS.last_telemetry_timestamp);
-              }
+            // AQUI A MÁGICA ACONTECE: Montamos a tela baseada no que veio do banco de dados!
+            this.sensors = apiSensors.map(apiS => {
+              return {
+                id: apiS.hardware_id || apiS.sensor_id,
+                name: apiS.name || apiS.sensor_name || 'Sensor Desconhecido',
+                type: apiS.type || apiS.sensor_type || 'temperature',
+                unit: apiS.unit || apiS.unit_of_measurement || '',
+                latest: apiS.latest_reading !== null && apiS.latest_reading !== undefined ? parseFloat(apiS.latest_reading).toFixed(1) : '--',
+                min: apiS.min_threshold !== null && apiS.min_threshold !== undefined ? parseFloat(apiS.min_threshold).toFixed(1) : '--',
+                max: apiS.max_threshold !== null && apiS.max_threshold !== undefined ? parseFloat(apiS.max_threshold).toFixed(1) : '--',
+                avg: apiS.arithmetic_mean !== null && apiS.arithmetic_mean !== undefined ? parseFloat(apiS.arithmetic_mean).toFixed(1) : '--',
+                status: apiS.operational_status ? apiS.operational_status.toUpperCase() : 'PENDING',
+                lastUpdate: this.timeAgo(apiS.last_telemetry_timestamp)
+              };
             });
+
+            // Se o simulador estiver vazio e tivermos sensores do banco, ele seleciona o primeiro pra facilitar sua vida
+            if (this.form.selected_devices.length === 0 && this.sensors.length > 0) {
+              this.form.selected_devices.push(this.sensors[0].id);
+            }
           }
         }
       } catch (e) {
         this.injectLocalLog('GATEWAY_RUST', 'CRITICAL', `Communication link failure on target gateway: ${e.message}`);
       }
     },
-    // Injects contextual programmatic narratives directly inside terminal logs
     injectLocalLog(component, level, message, backdateMs = 0) {
       this.logs.push({
         created_at: new Date(Date.now() - backdateMs).toISOString(),
@@ -325,7 +318,6 @@ export default {
       });
       this.$nextTick(this.scrollToBottom);
     },
-    // Dispatches multi-node, historical store-and-forward sequential data tracking payloads
     async dispatchTelemetry() {
       if (!this.form.selected_devices.length) {
         this.injectLocalLog('SIMULATOR', 'WARN', 'Telemetry rejected: Zero active nodes selected in target matrix.');
@@ -335,11 +327,9 @@ export default {
       const totalFrames = this.form.batch_count || 1;
       const minutesInterval = this.form.time_interval || 0;
 
-      // Iterating across all selected hardware targets checked in matrix UI
       for (const deviceId of this.form.selected_devices) {
         this.injectLocalLog('GATEWAY_RUST', 'INFO', `Establishing secure TLS handshake with node descriptor: [${deviceId}]`);
         
-        // Simulating memory desynchronization tracking sequences (Store-and-Forward simulation loop)
         for (let i = totalFrames - 1; i >= 0; i--) {
           const timeOffsetMinutes = i * minutesInterval;
           const calculatedTimestamp = new Date(Date.now() - (timeOffsetMinutes * 60 * 1000));
